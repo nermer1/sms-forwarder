@@ -1,75 +1,119 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="24dp">
+    android:fillViewport="true">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="SMS to Slack"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="24dp"/>
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Webhook URL 입력"
-        android:textStyle="bold"
-        android:layout_marginBottom="8dp"/>
-
-    <EditText
-        android:id="@+id/etWebhookUrl"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="https://hooks.slack.com/..."
-        android:inputType="textUri"
-        android:background="#F0F0F0"
-        android:padding="12dp"
-        android:textSize="14sp"
-        android:layout_marginBottom="16dp"/>
+        android:orientation="vertical"
+        android:padding="20dp">
 
-    <Button
-        android:id="@+id/btnSave"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="URL 저장하기"
-        android:textStyle="bold"
-        android:padding="12dp"
-        android:layout_marginBottom="10dp"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SmsForwarder 통합 설정"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="20dp"/>
 
-    <Button
-        android:id="@+id/btnTest"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="테스트 메시지 발송해보기"
-        android:backgroundTint="#4CAF50"
-        android:textColor="#FFFFFF"
-        android:padding="12dp"
-        android:layout_marginBottom="24dp"/>
+        <!-- 1. Webhook 설정 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="1. Webhook URL (POST)"
+            android:textStyle="bold" />
+        <EditText
+            android:id="@+id/etWebhookUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="https://example.com/api"
+            android:inputType="textUri"
+            android:layout_marginBottom="10dp"/>
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="전송 로그"
-        android:textStyle="bold"
-        android:layout_marginBottom="8dp"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Webhook Headers (Key:Value, 줄바꿈 구분)"
+            android:textSize="12sp" />
+        <EditText
+            android:id="@+id/etHeaders"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Authorization:Bearer token"
+            android:inputType="textMultiLine"
+            android:lines="2"
+            android:layout_marginBottom="16dp"/>
 
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:background="#EAEAEA"
-        android:padding="12dp">
+        <!-- 2. SMS 릴레이 설정 -->
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#DDD" android:layout_marginBottom="16dp"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="2. SMS 릴레이 (다른 폰으로 전달)"
+            android:textStyle="bold" />
+        <EditText
+            android:id="@+id/etTargetSms"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="전달받을 핸드폰 번호 (- 없이)"
+            android:inputType="phone"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- 3. 필터링 및 앱 설정 -->
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#DDD" android:layout_marginBottom="16dp"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="3. 필터링 및 알림 설정"
+            android:textStyle="bold" />
+        <EditText
+            android:id="@+id/etSmsSenderFilter"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="발신 번호 필터 (쉼표 구분)"
+            android:inputType="text"
+            android:layout_marginBottom="5dp"/>
+        <EditText
+            android:id="@+id/etSmsKeywordFilter"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="키워드 필터 (쉼표 구분)"
+            android:inputType="text"
+            android:layout_marginBottom="5dp"/>
+        <EditText
+            android:id="@+id/etAppWhitelist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="알림 가로챌 앱 패키지 (com.kakao.talk 등)"
+            android:inputType="text"
+            android:layout_marginBottom="16dp"/>
+
+        <Button
+            android:id="@+id/btnSave"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="설정 저장하기"
+            android:backgroundTint="#2196F3"
+            android:textColor="#FFFFFF" />
+
+        <Button
+            android:id="@+id/btnTest"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="통합 테스트 발송 (웹훅 + SMS)"
+            android:layout_marginTop="8dp" />
 
         <TextView
             android:id="@+id/tvLog"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="앱 준비 완료."
-            android:textSize="13sp"/>
-    </ScrollView>
+            android:background="#F5F5F5"
+            android:padding="10dp"
+            android:text="대기 중..."
+            android:textSize="11sp"
+            android:layout_marginTop="20dp"/>
 
-</LinearLayout>
+    </LinearLayout>
+</ScrollView>

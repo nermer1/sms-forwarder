@@ -1,6 +1,7 @@
 package com.example.myapplication
 
 import android.content.Context
+import android.os.Build
 import android.telephony.SmsManager
 import android.util.Log
 import com.example.myapplication.log.LogDbHelper
@@ -9,99 +10,101 @@ import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 
-enum class TargetType { SLACK, WEBHOOK, SMS }
-
-data class ForwardTarget(
-    val type: TargetType,
-    var destination: String
-)
 object ForwardingEngine {
-    // ★ 설정된 타겟 리스트 (나중에는 SharedPreferences에서 불러오게 구현 필요)
-    // 지금은 하드코딩으로 예시를 듭니다.
-    private fun getTargetList(): List<ForwardTarget> {
-        return listOf(
-            ForwardTarget(TargetType.SLACK, "https://hooks.slack.com/services/AAAA/BBBB/CCCC"),
-            ForwardTarget(TargetType.WEBHOOK, "https://my-company-server.com/api/sms"),
-            ForwardTarget(TargetType.SMS, "010-9999-8888") // 세컨폰 번호
-        )
-    }
 
-    fun process(context: Context, sender: String, body: String) {
+    fun process(
+        context: Context, 
+        sender: String, 
+        body: String, 
+        isTest: Boolean = false,
+        onResult: ((String) -> Unit)? = null
+    ) {
+        val sharedPref = context.getSharedPreferences("SmsPrefs", Context.MODE_PRIVATE)
+        
+        // 1. 필터링 체크
+        if (!isTest) {
+            val senderFilter = sharedPref.getString("sms_sender_filter", "") ?: ""
+            val keywordFilter = sharedPref.getString("sms_keyword_filter", "") ?: ""
+
+            if (senderFilter.isNotEmpty() && !senderFilter.split(",").any { sender.contains(it.trim()) }) return 
+            if (keywordFilter.isNotEmpty() && !keywordFilter.split(",").any { body.contains(it.trim()) }) return
+        }
+
         val dbHelper = LogDbHelper(context)
-        val targets = getTargetList() // 저장된 타겟 불러오기
-
-        // 1. 오래된 로그 정리 (예: 7일 지난거 삭제) - 실행될 때마다 체크
         dbHelper.deleteOldLogs(7)
 
-        // 2. 타겟별 전송 시작
-        targets.forEach { target ->
+        // 2. Webhook 전송
+        val webhookUrl = sharedPref.getString("webhook_url", "") ?: ""
+        val headersStr = sharedPref.getString("webhook_headers", "") ?: ""
+        
+        if (webhookUrl.isNotEmpty()) {
             Thread {
-                var success = false
-                try {
-                    when (target.type) {
-                        TargetType.SLACK -> success = sendToSlack(target.destination, sender, body)
-                        TargetType.WEBHOOK -> success = sendToWebhook(target.destination, sender, body)
-                        TargetType.SMS -> success = sendSms(target.destination, body)
-                    }
-                } catch (e: Exception) {
-                    Log.e("ForwardEngine", "전송 실패: ${e.message}")
-                    success = false
-                } finally {
-                    // 3. 결과 DB 저장
-                    dbHelper.addLog(target.type.name, target.destination, body, success)
-                    Log.d("ForwardEngine", "${target.type} 전송 결과: $success")
-                }
+                val result = sendToWebhook(webhookUrl, headersStr, sender, body)
+                val success = result.first
+                val message = result.second
+                dbHelper.addLog("WEBHOOK", webhookUrl, body, success)
+                onResult?.invoke("🌐 웹훅: ${if(success) "✅ 성공" else "❌ 실패 ($message)"}")
+            }.start()
+        }
+
+        // 3. SMS 릴레이 전송
+        val targetSms = sharedPref.getString("target_sms", "") ?: ""
+        if (targetSms.isNotEmpty()) {
+            Thread {
+                val success = sendSms(context, targetSms, "[$sender]\n$body")
+                dbHelper.addLog("SMS", targetSms, body, success)
+                onResult?.invoke("📱 SMS: ${if(success) "✅ 성공" else "❌ 실패"}")
             }.start()
         }
     }
 
-    // --- 개별 전송 로직 ---
-
-    // 1. 슬랙 전송
-    private fun sendToSlack(urlStr: String, sender: String, msg: String): Boolean {
+    private fun sendToWebhook(urlStr: String, headersStr: String, sender: String, msg: String): Pair<Boolean, String> {
         return try {
-            val json = JSONObject().apply {
-                put("text", "[문자 수신] $sender\n$msg")
+            val conn = URL(urlStr).openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.connectTimeout = 5000
+            conn.readTimeout = 5000
+            conn.setRequestProperty("Content-Type", "application/json")
+            
+            if (headersStr.isNotEmpty()) {
+                headersStr.split("\n").forEach { line ->
+                    val parts = line.split(":", limit = 2)
+                    if (parts.size == 2) conn.setRequestProperty(parts[0].trim(), parts[1].trim())
+                }
             }
-            postJson(urlStr, json.toString())
-        } catch (e: Exception) { false }
-    }
 
-    // 2. 일반 웹훅 전송 (JSON 포맷은 서버 스펙에 맞게 수정)
-    private fun sendToWebhook(urlStr: String, sender: String, msg: String): Boolean {
-        return try {
+            conn.doOutput = true
             val json = JSONObject().apply {
-                put("sender_phone", sender)
+                // 일반 서버용 데이터
+                put("sender", sender)
                 put("content", msg)
-                put("received_at", System.currentTimeMillis())
+                // 슬랙 호환용 text 필드 추가
+                put("text", "[SMS 전달] $sender\n$msg") 
             }
-            postJson(urlStr, json.toString())
-        } catch (e: Exception) { false }
-    }
 
-    // 3. SMS 재전송 (다른 폰으로)
-    private fun sendSms(phoneNumber: String, msg: String): Boolean {
-        return try {
-            val smsManager = SmsManager.getDefault()
-            // 긴 문자는 쪼개서 보냄
-            val parts = smsManager.divideMessage("[$msg]") // [전달] 표시
-            smsManager.sendMultipartTextMessage(phoneNumber, null, parts, null, null)
-            true
+            OutputStreamWriter(conn.outputStream).use { it.write(json.toString()) }
+            val code = conn.responseCode
+            if (code in 200..299) Pair(true, "OK") else Pair(false, "HTTP $code")
         } catch (e: Exception) {
-            e.printStackTrace()
-            false
+            Log.e("ForwardingEngine", "Webhook Error: ${e.message}")
+            Pair(false, e.message ?: "Unknown Error")
         }
     }
 
-    // HTTP POST 공통 함수
-    private fun postJson(urlStr: String, jsonBody: String): Boolean {
-        val conn = URL(urlStr).openConnection() as HttpURLConnection
-        conn.requestMethod = "POST"
-        conn.setRequestProperty("Content-Type", "application/json")
-        conn.doOutput = true
-
-        OutputStreamWriter(conn.outputStream).use { it.write(jsonBody) }
-
-        return conn.responseCode in 200..299
+    private fun sendSms(context: Context, phoneNumber: String, msg: String): Boolean {
+        return try {
+            val smsManager: SmsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                context.getSystemService(SmsManager::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                SmsManager.getDefault()
+            }
+            val parts = smsManager.divideMessage(msg)
+            smsManager.sendMultipartTextMessage(phoneNumber, null, parts, null, null)
+            true
+        } catch (e: Exception) {
+            Log.e("ForwardingEngine", "SMS Error: ${e.message}")
+            false
+        }
     }
 }
