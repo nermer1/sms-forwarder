@@ -29,6 +29,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".EditRuleActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MyApplication" />
+
         <receiver android:name=".SmsReceiver"
             android:exported="true"
             android:permission="android.permission.BROADCAST_SMS">

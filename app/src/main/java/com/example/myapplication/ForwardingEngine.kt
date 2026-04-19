@@ -5,10 +5,16 @@ import android.os.Build
 import android.telephony.SmsManager
 import android.util.Log
 import com.example.myapplication.log.LogDbHelper
+import com.example.myapplication.models.ForwardTarget
+import com.example.myapplication.models.ForwardingRule
+import com.example.myapplication.models.TargetType
 import org.json.JSONObject
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 object ForwardingEngine {
 
@@ -16,85 +22,141 @@ object ForwardingEngine {
         context: Context, 
         sender: String, 
         body: String, 
-        isTest: Boolean = false,
+        packageName: String? = null,
         onResult: ((String) -> Unit)? = null
     ) {
-        val sharedPref = context.getSharedPreferences("SmsPrefs", Context.MODE_PRIVATE)
-        
-        // 1. 필터링 체크
-        if (!isTest) {
-            val senderFilter = sharedPref.getString("sms_sender_filter", "") ?: ""
-            val keywordFilter = sharedPref.getString("sms_keyword_filter", "") ?: ""
-
-            if (senderFilter.isNotEmpty() && !senderFilter.split(",").any { sender.contains(it.trim()) }) return 
-            if (keywordFilter.isNotEmpty() && !keywordFilter.split(",").any { body.contains(it.trim()) }) return
-        }
-
+        val rules = RuleManager.getRules(context)
         val dbHelper = LogDbHelper(context)
         dbHelper.deleteOldLogs(7)
 
-        // 2. Webhook 전송
-        val webhookUrl = sharedPref.getString("webhook_url", "") ?: ""
-        val headersStr = sharedPref.getString("webhook_headers", "") ?: ""
-        
-        if (webhookUrl.isNotEmpty()) {
-            Thread {
-                val result = sendToWebhook(webhookUrl, headersStr, sender, body)
-                val success = result.first
-                val message = result.second
-                dbHelper.addLog("WEBHOOK", webhookUrl, body, success)
-                onResult?.invoke("🌐 웹훅: ${if(success) "✅ 성공" else "❌ 실패 ($message)"}")
-            }.start()
-        }
-
-        // 3. SMS 릴레이 전송
-        val targetSms = sharedPref.getString("target_sms", "") ?: ""
-        if (targetSms.isNotEmpty()) {
-            Thread {
-                val success = sendSms(context, targetSms, "[$sender]\n$body")
-                dbHelper.addLog("SMS", targetSms, body, success)
-                onResult?.invoke("📱 SMS: ${if(success) "✅ 성공" else "❌ 실패"}")
-            }.start()
+        rules.filter { it.isEnabled }.forEach { rule ->
+            if (isMatched(rule, sender, body, packageName)) {
+                testRule(context, rule, sender, body, onResult)
+            }
         }
     }
 
-    private fun sendToWebhook(urlStr: String, headersStr: String, sender: String, msg: String): Pair<Boolean, String> {
+    fun testRule(
+        context: Context,
+        rule: ForwardingRule,
+        sender: String,
+        body: String,
+        onResult: ((String) -> Unit)? = null
+    ) {
+        val dbHelper = LogDbHelper(context)
+        rule.targets.forEach { target ->
+            executeTarget(context, target, sender, body, dbHelper, onResult)
+        }
+    }
+
+    private fun isMatched(rule: ForwardingRule, sender: String, body: String, packageName: String?): Boolean {
+        // 소스 체크
+        if (packageName == null) {
+            // SMS 인 경우
+            if (!rule.isSmsEnabled) return false
+            if (rule.senderFilter.isNotEmpty() && !rule.senderFilter.split(",").any { sender.contains(it.trim()) }) return false
+        } else {
+            // 알림 인 경우
+            if (!rule.isNotificationEnabled) return false
+            if (rule.targetAppPackages.isNotEmpty() && !rule.targetAppPackages.split(",").any { packageName.contains(it.trim()) }) return false
+        }
+
+        // 공통 키워드 필터 체크
+        if (rule.keywordFilter.isNotEmpty() && !rule.keywordFilter.split(",").any { body.contains(it.trim()) }) return false
+
+        return true
+    }
+
+    private fun executeTarget(
+        context: Context,
+        target: ForwardTarget,
+        sender: String,
+        body: String,
+        dbHelper: LogDbHelper,
+        onResult: ((String) -> Unit)?
+    ) {
+        Thread {
+            try {
+                when (target.type) {
+                    TargetType.SLACK -> {
+                        val result = sendToSlack(target.destination, sender, body)
+                        dbHelper.addLog("SLACK", target.destination, body, result.first)
+                        onResult?.invoke("💬 [SLACK] ${if(result.first) "✅" else "❌"} ${result.second}")
+                    }
+                    TargetType.API -> {
+                        val result = sendToApi(target, sender, body)
+                        dbHelper.addLog("API", target.destination, body, result.first)
+                        onResult?.invoke("🔌 [API] ${if(result.first) "✅" else "❌"} ${result.second}")
+                    }
+                    TargetType.SMS -> {
+                        val success = sendSms(context, target.destination, "[$sender]\n$body")
+                        dbHelper.addLog("SMS", target.destination, body, success)
+                        onResult?.invoke("📱 [SMS] ${if(success) "✅" else "❌"}")
+                    }
+                }
+            } catch (e: Exception) {
+                onResult?.invoke("⚠️ Error: ${e.message}")
+            }
+        }.start()
+    }
+
+    private fun sendToSlack(urlStr: String, sender: String, msg: String): Pair<Boolean, String> {
         return try {
             val conn = URL(urlStr).openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
             conn.connectTimeout = 5000
-            conn.readTimeout = 5000
             conn.setRequestProperty("Content-Type", "application/json")
-            
-            if (headersStr.isNotEmpty()) {
-                headersStr.split("\n").forEach { line ->
-                    val parts = line.split(":", limit = 2)
-                    if (parts.size == 2) conn.setRequestProperty(parts[0].trim(), parts[1].trim())
-                }
-            }
-
             conn.doOutput = true
+            
             val json = JSONObject().apply {
-                // 일반 서버용 데이터
-                put("sender", sender)
-                put("content", msg)
-                // 슬랙 호환용 text 필드 추가
-                put("text", "[SMS 전달] $sender\n$msg") 
+                put("text", "[SMS/알림 전달]\n*보낸이*: $sender\n*내용*: $msg")
             }
 
             OutputStreamWriter(conn.outputStream).use { it.write(json.toString()) }
             val code = conn.responseCode
             if (code in 200..299) Pair(true, "OK") else Pair(false, "HTTP $code")
         } catch (e: Exception) {
-            Log.e("ForwardingEngine", "Webhook Error: ${e.message}")
-            Pair(false, e.message ?: "Unknown Error")
+            Pair(false, e.message ?: "Error")
+        }
+    }
+
+    private fun sendToApi(target: ForwardTarget, sender: String, msg: String): Pair<Boolean, String> {
+        return try {
+            val conn = URL(target.destination).openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.connectTimeout = 5000
+            conn.doOutput = true
+            
+            // 1. Headers 설정
+            target.headers.forEach { (k, v) -> conn.setRequestProperty(k, v) }
+            if (!target.headers.containsKey("Content-Type")) {
+                conn.setRequestProperty("Content-Type", "application/json")
+            }
+
+            // 2. Body 데이터 치환 및 JSON 생성
+            val json = JSONObject()
+            val dateStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+            
+            target.bodyMap.forEach { (k, v) ->
+                val replacedValue = v.replace("{{sender}}", sender)
+                    .replace("{{content}}", msg)
+                    .replace("{{title}}", "SMS Forwarder") // 제목 필드 (추후 확장 가능)
+                    .replace("{{date}}", dateStr)
+                json.put(k, replacedValue)
+            }
+
+            OutputStreamWriter(conn.outputStream).use { it.write(json.toString()) }
+            val code = conn.responseCode
+            if (code in 200..299) Pair(true, "OK") else Pair(false, "HTTP $code")
+        } catch (e: Exception) {
+            Pair(false, e.message ?: "Error")
         }
     }
 
     private fun sendSms(context: Context, phoneNumber: String, msg: String): Boolean {
         return try {
             val smsManager: SmsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                context.getSystemService(SmsManager::class.java)
+                context.getSystemService(SmsManager::class.java)!!
             } else {
                 @Suppress("DEPRECATION")
                 SmsManager.getDefault()
@@ -103,7 +165,6 @@ object ForwardingEngine {
             smsManager.sendMultipartTextMessage(phoneNumber, null, parts, null, null)
             true
         } catch (e: Exception) {
-            Log.e("ForwardingEngine", "SMS Error: ${e.message}")
             false
         }
     }

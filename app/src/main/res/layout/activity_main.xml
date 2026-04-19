@@ -1,119 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:layout_height="match_parent">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="?attr/colorPrimary"
+        app:title="포워딩 규칙 목록"
+        app:titleTextColor="#FFFFFF"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvRules"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toTopOf="@id/llStatus"
+        app:layout_constraintTop_toBottomOf="@id/toolbar" />
 
     <LinearLayout
+        android:id="@+id/llStatus"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:padding="12dp"
+        android:background="#F5F5F5"
+        app:layout_constraintBottom_toBottomOf="parent">
 
         <TextView
+            android:id="@+id/tvEngineStatus"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="SmsForwarder 통합 설정"
-            android:textSize="22sp"
+            android:text="서비스 동작 중..."
             android:textStyle="bold"
-            android:layout_marginBottom="20dp"/>
-
-        <!-- 1. Webhook 설정 -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="1. Webhook URL (POST)"
-            android:textStyle="bold" />
-        <EditText
-            android:id="@+id/etWebhookUrl"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="https://example.com/api"
-            android:inputType="textUri"
-            android:layout_marginBottom="10dp"/>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Webhook Headers (Key:Value, 줄바꿈 구분)"
             android:textSize="12sp" />
-        <EditText
-            android:id="@+id/etHeaders"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Authorization:Bearer token"
-            android:inputType="textMultiLine"
-            android:lines="2"
-            android:layout_marginBottom="16dp"/>
 
-        <!-- 2. SMS 릴레이 설정 -->
-        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#DDD" android:layout_marginBottom="16dp"/>
         <TextView
+            android:id="@+id/tvLastLog"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="2. SMS 릴레이 (다른 폰으로 전달)"
-            android:textStyle="bold" />
-        <EditText
-            android:id="@+id/etTargetSms"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="전달받을 핸드폰 번호 (- 없이)"
-            android:inputType="phone"
-            android:layout_marginBottom="16dp"/>
-
-        <!-- 3. 필터링 및 앱 설정 -->
-        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#DDD" android:layout_marginBottom="16dp"/>
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="3. 필터링 및 알림 설정"
-            android:textStyle="bold" />
-        <EditText
-            android:id="@+id/etSmsSenderFilter"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="발신 번호 필터 (쉼표 구분)"
-            android:inputType="text"
-            android:layout_marginBottom="5dp"/>
-        <EditText
-            android:id="@+id/etSmsKeywordFilter"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="키워드 필터 (쉼표 구분)"
-            android:inputType="text"
-            android:layout_marginBottom="5dp"/>
-        <EditText
-            android:id="@+id/etAppWhitelist"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="알림 가로챌 앱 패키지 (com.kakao.talk 등)"
-            android:inputType="text"
-            android:layout_marginBottom="16dp"/>
-
-        <Button
-            android:id="@+id/btnSave"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="설정 저장하기"
-            android:backgroundTint="#2196F3"
-            android:textColor="#FFFFFF" />
-
-        <Button
-            android:id="@+id/btnTest"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="통합 테스트 발송 (웹훅 + SMS)"
-            android:layout_marginTop="8dp" />
-
-        <TextView
-            android:id="@+id/tvLog"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="#F5F5F5"
-            android:padding="10dp"
-            android:text="대기 중..."
-            android:textSize="11sp"
-            android:layout_marginTop="20dp"/>
-
+            android:text="마지막 활동: 없음"
+            android:textSize="11sp" />
     </LinearLayout>
-</ScrollView>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabAdd"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="24dp"
+        android:contentDescription="규칙 추가"
+        app:srcCompat="@android:drawable/ic_input_add"
+        app:layout_constraintBottom_toTopOf="@id/llStatus"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

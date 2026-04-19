@@ -9,16 +9,21 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
-import android.widget.Button
-import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 
 class MainActivity : AppCompatActivity() {
+
+    private lateinit var adapter: RuleAdapter
+    private lateinit var tvLastLog: TextView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -30,61 +35,34 @@ class MainActivity : AppCompatActivity() {
         
         ForegroundService.startService(this)
 
-        val etUrl = findViewById<EditText>(R.id.etWebhookUrl)
-        val etHeaders = findViewById<EditText>(R.id.etHeaders)
-        val etTargetSms = findViewById<EditText>(R.id.etTargetSms)
-        val etSmsSenderFilter = findViewById<EditText>(R.id.etSmsSenderFilter)
-        val etSmsKeywordFilter = findViewById<EditText>(R.id.etSmsKeywordFilter)
-        val etAppWhitelist = findViewById<EditText>(R.id.etAppWhitelist)
+        tvLastLog = findViewById(R.id.tvLastLog)
+        val rvRules = findViewById<RecyclerView>(R.id.rvRules)
+        rvRules.layoutManager = LinearLayoutManager(this)
         
-        val btnSave = findViewById<Button>(R.id.btnSave)
-        val btnTest = findViewById<Button>(R.id.btnTest)
-        val tvLog = findViewById<TextView>(R.id.tvLog)
-
-        val sharedPref = getSharedPreferences("SmsPrefs", Context.MODE_PRIVATE)
-        
-        etUrl.setText(sharedPref.getString("webhook_url", ""))
-        etHeaders.setText(sharedPref.getString("webhook_headers", ""))
-        etTargetSms.setText(sharedPref.getString("target_sms", ""))
-        etSmsSenderFilter.setText(sharedPref.getString("sms_sender_filter", ""))
-        etSmsKeywordFilter.setText(sharedPref.getString("sms_keyword_filter", ""))
-        etAppWhitelist.setText(sharedPref.getString("app_whitelist", "com.kakao.talk"))
-
-        btnSave.setOnClickListener {
-            sharedPref.edit().apply {
-                putString("webhook_url", etUrl.text.toString())
-                putString("webhook_headers", etHeaders.text.toString())
-                putString("target_sms", etTargetSms.text.toString())
-                putString("sms_sender_filter", etSmsSenderFilter.text.toString())
-                putString("sms_keyword_filter", etSmsKeywordFilter.text.toString())
-                putString("app_whitelist", etAppWhitelist.text.toString())
-                apply()
+        adapter = RuleAdapter(
+            rules = RuleManager.getRules(this),
+            onRuleClick = { rule ->
+                val intent = Intent(this, EditRuleActivity::class.java)
+                intent.putExtra("RULE_ID", rule.id)
+                startActivity(intent)
+            },
+            onToggleRule = { rule, isEnabled ->
+                rule.isEnabled = isEnabled
+                RuleManager.updateRule(this, rule)
+                Toast.makeText(this, "${rule.name} ${if(isEnabled) "활성화" else "비활성화"}", Toast.LENGTH_SHORT).show()
             }
-            Toast.makeText(this, "설정이 저장되었습니다.", Toast.LENGTH_SHORT).show()
-            tvLog.text = "설정 저장 완료"
+        )
+        rvRules.adapter = adapter
+
+        findViewById<FloatingActionButton>(R.id.fabAdd).setOnClickListener {
+            startActivity(Intent(this, EditRuleActivity::class.java))
         }
+    }
 
-        btnTest.setOnClickListener {
-            val targetUrl = etUrl.text.toString()
-            val targetSms = etTargetSms.text.toString()
-            
-            if (targetUrl.isEmpty() && targetSms.isEmpty()) {
-                Toast.makeText(this, "URL이나 수신 번호 중 하나는 입력해야 합니다.", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-
-            tvLog.text = "[통합 테스트 시작]\n- 웹훅: ${if(targetUrl.isEmpty()) "미설정" else targetUrl}\n- SMS: ${if(targetSms.isEmpty()) "미설정" else targetSms}"
-            
-            // 엔진 실행 시 결과 콜백 전달
-            ForwardingEngine.process(this, "테스트발신자", "이것은 통합 테스트 본문입니다.", true) { resultMsg ->
-                // UI 스레드에서 로그 업데이트
-                runOnUiThread {
-                    tvLog.append("\n$resultMsg")
-                }
-            }
-            
-            Toast.makeText(this, "전송 프로세스 시작됨", Toast.LENGTH_SHORT).show()
-        }
+    override fun onResume() {
+        super.onResume()
+        // 규칙 목록 갱신
+        adapter.updateRules(RuleManager.getRules(this))
     }
 
     private fun checkPermission() {
@@ -100,17 +78,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String?>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 101 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(this, "권한 허용됨.", Toast.LENGTH_SHORT).show()
-        }
-    }
-
     private fun checkNotificationServicePermission() {
         if (!isNotificationServiceEnabled()) {
-            startActivity(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
-            Toast.makeText(this, "알림 접근 권한을 허용해주세요.", Toast.LENGTH_LONG).show()
+            try {
+                startActivity(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
+                Toast.makeText(this, "알림 접근 권한을 허용해주세요.", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                // 일부 기기에서 인텐트 오류 대비
+            }
         }
     }
 
