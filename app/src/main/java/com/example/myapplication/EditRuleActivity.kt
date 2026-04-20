@@ -26,8 +26,26 @@ class EditRuleActivity : AppCompatActivity() {
         val etSenderFilter = findViewById<EditText>(R.id.etSenderFilter)
         val etKeywordFilter = findViewById<EditText>(R.id.etKeywordFilter)
         val etAppWhitelist = findViewById<EditText>(R.id.etAppWhitelist)
-        val cbSms = findViewById<com.google.android.material.checkbox.MaterialCheckBox>(R.id.cbSms)
-        val cbNotification = findViewById<com.google.android.material.checkbox.MaterialCheckBox>(R.id.cbNotification)
+        
+        val rgSource = findViewById<android.widget.RadioGroup>(R.id.rgSource)
+        val rbSms = findViewById<android.widget.RadioButton>(R.id.rbSms)
+        val rbNotification = findViewById<android.widget.RadioButton>(R.id.rbNotification)
+        
+        val layoutSenderFilter = findViewById<View>(R.id.layoutSenderFilter)
+        val layoutAppFilter = findViewById<View>(R.id.layoutAppFilter)
+
+        rgSource.setOnCheckedChangeListener { _, checkedId ->
+            when (checkedId) {
+                R.id.rbSms -> {
+                    layoutSenderFilter.visibility = View.VISIBLE
+                    layoutAppFilter.visibility = View.GONE
+                }
+                R.id.rbNotification -> {
+                    layoutSenderFilter.visibility = View.GONE
+                    layoutAppFilter.visibility = View.VISIBLE
+                }
+            }
+        }
 
         currentRuleId = intent.getStringExtra("RULE_ID")
         if (currentRuleId != null) {
@@ -37,8 +55,12 @@ class EditRuleActivity : AppCompatActivity() {
                 etSenderFilter.setText(rule.senderFilter ?: "")
                 etKeywordFilter.setText(rule.keywordFilter ?: "")
                 etAppWhitelist.setText(rule.targetAppPackages ?: "")
-                cbSms.isChecked = rule.isSmsEnabled
-                cbNotification.isChecked = rule.isNotificationEnabled
+                
+                if (rule.isNotificationEnabled && !rule.isSmsEnabled) {
+                    rbNotification.isChecked = true
+                } else {
+                    rbSms.isChecked = true
+                }
                 rule.targets?.forEach { addTargetView(it) }
                 
                 findViewById<View>(R.id.btnDeleteRule).apply {
@@ -138,7 +160,16 @@ class EditRuleActivity : AppCompatActivity() {
             }
         }
 
-        view.findViewById<View>(R.id.btnRemoveTarget).setOnClickListener { targetContainer.removeView(view) }
+        view.findViewById<View>(R.id.btnRemoveTarget).setOnClickListener {
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("타겟 삭제")
+                .setMessage("이 전달 타겟을 삭제하시겠습니까?")
+                .setPositiveButton("삭제") { _, _ ->
+                    targetContainer.removeView(view)
+                }
+                .setNegativeButton("취소", null)
+                .show()
+        }
         targetContainer.addView(view)
     }
 
@@ -186,14 +217,13 @@ class EditRuleActivity : AppCompatActivity() {
             targets.add(target)
         }
 
-        val cbSms = findViewById<com.google.android.material.checkbox.MaterialCheckBox>(R.id.cbSms)
-        val cbNotification = findViewById<com.google.android.material.checkbox.MaterialCheckBox>(R.id.cbNotification)
+        val rbNotification = findViewById<android.widget.RadioButton>(R.id.rbNotification)
 
         return ForwardingRule(
             id = currentRuleId ?: java.util.UUID.randomUUID().toString(),
             name = name,
-            isSmsEnabled = cbSms.isChecked,
-            isNotificationEnabled = cbNotification.isChecked,
+            isSmsEnabled = !rbNotification.isChecked,
+            isNotificationEnabled = rbNotification.isChecked,
             senderFilter = findViewById<EditText>(R.id.etSenderFilter).text.toString(),
             keywordFilter = findViewById<EditText>(R.id.etKeywordFilter).text.toString(),
             targetAppPackages = findViewById<EditText>(R.id.etAppWhitelist).text.toString(),

@@ -43,45 +43,58 @@
                 android:text="📥 메시지 수신 조건 (Triggers)"
                 android:textStyle="bold" />
 
-            <LinearLayout
+            <RadioGroup
+                android:id="@+id/rgSource"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:layout_marginTop="8dp">
-                <com.google.android.material.checkbox.MaterialCheckBox
-                    android:id="@+id/cbSms"
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/rbSms"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="SMS 수신"
                     android:checked="true" />
-                <com.google.android.material.checkbox.MaterialCheckBox
-                    android:id="@+id/cbNotification"
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/rbNotification"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="앱 알림 수신" />
-            </LinearLayout>
+            </RadioGroup>
 
-            <EditText
-                android:id="@+id/etSenderFilter"
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layoutSenderFilter"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="발신 번호 필터 (SMS 전용, 쉼표 구분)"
-                android:textSize="14sp" />
+                android:layout_marginTop="8dp"
+                android:hint="발신 번호 필터 (SMS 전용, 쉼표 구분)">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etSenderFilter"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="14sp" />
+            </com.google.android.material.textfield.TextInputLayout>
 
             <LinearLayout
+                android:id="@+id/layoutAppFilter"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="center_vertical">
-                <EditText
-                    android:id="@+id/etAppWhitelist"
+                android:gravity="center_vertical"
+                android:visibility="gone">
+                <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:hint="대상 앱 패키지명 (알림 전용, 쉼표 구분)"
-                    android:textSize="14sp" />
+                    android:hint="대상 앱 패키지명 (알림 전용, 쉼표 구분)">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etAppWhitelist"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="14sp" />
+                </com.google.android.material.textfield.TextInputLayout>
                 <Button
                     android:id="@+id/btnSelectApps"
                     style="@style/Widget.MaterialComponents.Button.TextButton"
@@ -90,12 +103,18 @@
                     android:text="앱 선택" />
             </LinearLayout>
 
-            <EditText
-                android:id="@+id/etKeywordFilter"
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layoutKeywordFilter"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="공통 키워드 필터 (내용에 포함 시 전달)"
-                android:textSize="14sp" />
+                android:layout_marginTop="8dp"
+                android:hint="공통 키워드 필터 (내용에 포함 시 전달)">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etKeywordFilter"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="14sp" />
+            </com.google.android.material.textfield.TextInputLayout>
 
             <View
                 android:layout_width="match_parent"
