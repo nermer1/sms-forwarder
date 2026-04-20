@@ -89,9 +89,10 @@ object ForwardingEngine {
                         onResult?.invoke("🔌 [API] ${if(result.first) "✅" else "❌"} ${result.second}")
                     }
                     TargetType.SMS -> {
+                        Log.d("ForwardingEngine", "Sending SMS to: ${target.destination}")
                         val success = sendSms(context, target.destination, "[$sender]\n$body")
                         dbHelper.addLog("SMS", target.destination, body, success)
-                        onResult?.invoke("📱 [SMS] ${if(success) "✅" else "❌"}")
+                        onResult?.invoke("📱 [SMS] to ${target.destination}: ${if(success) "✅" else "❌"}")
                     }
                 }
             } catch (e: Exception) {
