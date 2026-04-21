@@ -34,6 +34,12 @@
             android:exported="false"
             android:theme="@style/Theme.MyApplication" />
 
+        <activity
+            android:name=".LogActivity"
+            android:exported="false"
+            android:label="전송 로그"
+            android:theme="@style/Theme.MyApplication" />
+
         <receiver android:name=".SmsReceiver"
             android:exported="true"
             android:permission="android.permission.BROADCAST_SMS">

@@ -55,4 +55,24 @@ class LogDbHelper(context: Context) : SQLiteOpenHelper(context, "ForwardLogs.db"
         db.delete("logs", null, null)
         db.close()
     }
+
+    fun getAllLogs(): List<Map<String, Any>> {
+        val list = mutableListOf<Map<String, Any>>()
+        val db = readableDatabase
+        val cursor = db.query("logs", null, null, null, null, null, "timestamp DESC")
+        
+        while (cursor.moveToNext()) {
+            val map = mutableMapOf<String, Any>()
+            map["id"] = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
+            map["timestamp"] = cursor.getLong(cursor.getColumnIndexOrThrow("timestamp"))
+            map["target_type"] = cursor.getString(cursor.getColumnIndexOrThrow("target_type"))
+            map["target_dest"] = cursor.getString(cursor.getColumnIndexOrThrow("target_dest"))
+            map["message"] = cursor.getString(cursor.getColumnIndexOrThrow("message"))
+            map["is_success"] = cursor.getInt(cursor.getColumnIndexOrThrow("is_success"))
+            list.add(map)
+        }
+        cursor.close()
+        db.close()
+        return list
+    }
 }

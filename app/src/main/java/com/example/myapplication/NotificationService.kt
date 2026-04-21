@@ -14,14 +14,17 @@ class NotificationService : NotificationListenerService() {
         val text = extras.getCharSequence("android.text")?.toString() ?: ""
         val subText = extras.getCharSequence("android.subText")?.toString() ?: ""
 
-        val sharedPref = applicationContext.getSharedPreferences("SmsPrefs", Context.MODE_PRIVATE)
-        val appWhitelistStr = sharedPref.getString("app_whitelist", "com.kakao.talk") ?: "com.kakao.talk"
-        val whiteList = appWhitelistStr.split(",").map { it.trim() }
+        val fullContent = if (subText.isNotEmpty()) "[$subText] $text" else text
+
+        Log.d("NotificationService", "알림 감지: [$packageName] $title : $fullContent")
         
-        if (whiteList.contains(packageName)) {
-            Log.d("NotificationService", "알림 수신: [$packageName] $title : $text ($subText)")
-            ForwardingEngine.process(applicationContext, "알림($title)", text)
-        }
+        // 규칙 기반 프로세싱 호출
+        ForwardingEngine.process(
+            context = applicationContext,
+            sender = title,
+            body = fullContent,
+            packageName = packageName
+        )
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {

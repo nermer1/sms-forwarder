@@ -50,6 +50,12 @@ class MainActivity : AppCompatActivity() {
                 rule.isEnabled = isEnabled
                 RuleManager.updateRule(this, rule)
                 Toast.makeText(this, "${rule.name} ${if(isEnabled) "활성화" else "비활성화"}", Toast.LENGTH_SHORT).show()
+            },
+            onLogClick = { rule ->
+                // 로그 화면으로 이동 (아직 LogActivity를 안 만들었다면 곧 만들 예정!)
+                val intent = Intent(this, LogActivity::class.java)
+                intent.putExtra("RULE_ID", rule.id)
+                startActivity(intent)
             }
         )
         rvRules.adapter = adapter

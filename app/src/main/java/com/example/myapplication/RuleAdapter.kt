@@ -11,13 +11,15 @@ import com.google.android.material.switchmaterial.SwitchMaterial
 class RuleAdapter(
     private var rules: List<ForwardingRule>,
     private val onRuleClick: (ForwardingRule) -> Unit,
-    private val onToggleRule: (ForwardingRule, Boolean) -> Unit
+    private val onToggleRule: (ForwardingRule, Boolean) -> Unit,
+    private val onLogClick: (ForwardingRule) -> Unit
 ) : RecyclerView.Adapter<RuleAdapter.RuleViewHolder>() {
 
     class RuleViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val tvRuleName: TextView = view.findViewById(R.id.tvRuleName)
         val tvRuleSummary: TextView = view.findViewById(R.id.tvRuleSummary)
         val swEnabled: SwitchMaterial = view.findViewById(R.id.swEnabled)
+        val btnShowLog: View = view.findViewById(R.id.btnShowLog)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RuleViewHolder {
@@ -43,6 +45,7 @@ class RuleAdapter(
         holder.swEnabled.setOnCheckedChangeListener { _, isChecked ->
             onToggleRule(rule, isChecked)
         }
+        holder.btnShowLog.setOnClickListener { onLogClick(rule) }
     }
 
     override fun getItemCount() = rules.size
