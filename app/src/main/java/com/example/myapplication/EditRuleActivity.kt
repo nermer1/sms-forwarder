@@ -148,6 +148,27 @@ class EditRuleActivity : AppCompatActivity() {
 
                 view.findViewById<View>(R.id.btnAddHeader).setOnClickListener { addKvView(hContainer, "", "") }
                 view.findViewById<View>(R.id.btnAddBody).setOnClickListener { addKvView(bContainer, "", "") }
+
+                // 프리셋 설정
+                val spinner = view.findViewById<android.widget.Spinner>(R.id.spinnerPreset)
+                val presets = listOf("직접 입력", "슬랙 헬퍼 프리셋")
+                val adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_item, presets)
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                spinner.adapter = adapter
+                
+                spinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+                    override fun onItemSelected(parent: android.widget.AdapterView<*>?, v: View?, position: Int, id: Long) {
+                        if (position == 1) { //슬랙 헬퍼
+                            view.findViewById<EditText>(R.id.etTargetUrl).setText("https://unidocu.unipost.co.kr/helper/api/v1/integrations/slack/notify")
+                            hContainer.removeAllViews()
+                            addKvView(hContainer, "x-api-key", "헬퍼에서 발급 받은 api 토큰 입력")
+                            bContainer.removeAllViews()
+                            addKvView(bContainer, "message", "{{content}}")
+                            addKvView(bContainer, "from", "{{sender}}")
+                        }
+                    }
+                    override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+                }
             }
         }
 
