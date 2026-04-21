@@ -31,18 +31,19 @@ class EditRuleActivity : AppCompatActivity() {
         val rbSms = findViewById<android.widget.RadioButton>(R.id.rbSms)
         val rbNotification = findViewById<android.widget.RadioButton>(R.id.rbNotification)
         
-        val layoutSenderFilter = findViewById<View>(R.id.layoutSenderFilter)
         val layoutAppFilter = findViewById<View>(R.id.layoutAppFilter)
+
+        val layoutSenderFilter = findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.layoutSenderFilter)
 
         rgSource.setOnCheckedChangeListener { _, checkedId ->
             when (checkedId) {
                 R.id.rbSms -> {
-                    layoutSenderFilter.visibility = View.VISIBLE
                     layoutAppFilter.visibility = View.GONE
+                    layoutSenderFilter.hint = "발신 번호 필터 (쉼표 구분)"
                 }
                 R.id.rbNotification -> {
-                    layoutSenderFilter.visibility = View.GONE
                     layoutAppFilter.visibility = View.VISIBLE
+                    layoutSenderFilter.hint = "발신자(제목) 필터 (쉼표 구분)"
                 }
             }
         }

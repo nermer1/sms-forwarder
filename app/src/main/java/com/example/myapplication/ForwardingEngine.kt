@@ -50,18 +50,33 @@ object ForwardingEngine {
     }
 
     private fun isMatched(rule: ForwardingRule, sender: String, body: String, packageName: String?): Boolean {
-        // 소스 체크
+        // 소스 체크 (SMS/Notification 선택 여부)
         if (packageName == null) {
-            // SMS 인 경우
             if (!rule.isSmsEnabled) return false
-            if (rule.senderFilter.isNotEmpty() && !rule.senderFilter.split(",").any { sender.contains(it.trim()) }) return false
         } else {
-            // 알림 인 경우
             if (!rule.isNotificationEnabled) return false
+            // 알림인 경우 앱 패키지 필터 추가 체크
             if (rule.targetAppPackages.isNotEmpty() && !rule.targetAppPackages.split(",").any { packageName.contains(it.trim()) }) return false
         }
 
-        // 공통 키워드 필터 체크
+        // 공통 발신자 필터 체크 (SMS 번호 또는 알림 제목)
+        if (rule.senderFilter.isNotEmpty()) {
+            val filterParts = rule.senderFilter.split(",")
+            val matched = if (packageName == null) {
+                // SMS인 경우: 숫자만 추출하여 비교 (하이픈 등 무시)
+                val normalizedSender = sender.filter { it.isDigit() }
+                filterParts.any { part ->
+                    val normalizedPart = part.trim().filter { it.isDigit() }
+                    normalizedPart.isNotEmpty() && normalizedSender.contains(normalizedPart)
+                }
+            } else {
+                // 알림인 경우: 제목 텍스트 포함 여부 체크
+                filterParts.any { sender.contains(it.trim()) }
+            }
+            if (!matched) return false
+        }
+
+        // 공통 키워드 필터 체크 (내용)
         if (rule.keywordFilter.isNotEmpty() && !rule.keywordFilter.split(",").any { body.contains(it.trim()) }) return false
 
         return true
