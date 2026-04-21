@@ -27,15 +27,23 @@ class LogActivity : AppCompatActivity() {
         val rvLogs = findViewById<RecyclerView>(R.id.rvLogs)
         rvLogs.layoutManager = LinearLayoutManager(this)
         
-        logAdapter = LogAdapter(dbHelper.getAllLogs())
+        val ruleId = intent.getStringExtra("RULE_ID")
+        val logs = dbHelper.getAllLogs(ruleId)
+        logAdapter = LogAdapter(logs)
         rvLogs.adapter = logAdapter
+
+        if (ruleId != null) {
+            val rules = RuleManager.getRules(this)
+            val rule = rules.find { it.id == ruleId }
+            supportActionBar?.title = "${rule?.name ?: "규칙"} 로그"
+        }
 
         findViewById<Button>(R.id.btnClearLogs).setOnClickListener {
             androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle("로그 삭제")
-                .setMessage("모든 전송 로그를 삭제하시겠습니까?")
+                .setMessage(if (ruleId == null) "모든 전송 로그를 삭제하시겠습니까?" else "이 규칙의 로그만 삭제하시겠습니까?")
                 .setPositiveButton("삭제") { _, _ ->
-                    dbHelper.clearAllLogs()
+                    dbHelper.clearAllLogs(ruleId)
                     logAdapter.updateLogs(emptyList())
                 }
                 .setNegativeButton("취소", null)

@@ -5,13 +5,14 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
-class LogDbHelper(context: Context) : SQLiteOpenHelper(context, "ForwardLogs.db", null, 1) {
+class LogDbHelper(context: Context) : SQLiteOpenHelper(context, "ForwardLogs.db", null, 2) {
     override fun onCreate(db: SQLiteDatabase) {
-        // 테이블 생성: ID, 시간, 타입(슬랙/SMS 등), 대상, 내용, 성공여부
+        // 테이블 생성: ID, 시간, 규칙ID, 타입(슬랙/SMS 등), 대상, 내용, 성공여부
         val sql = """
             CREATE TABLE logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 timestamp INTEGER,
+                rule_id TEXT,
                 target_type TEXT,
                 target_dest TEXT,
                 message TEXT,
@@ -27,10 +28,11 @@ class LogDbHelper(context: Context) : SQLiteOpenHelper(context, "ForwardLogs.db"
     }
 
     // 로그 추가
-    fun addLog(type: String, dest: String, msg: String, isSuccess: Boolean) {
+    fun addLog(ruleId: String, type: String, dest: String, msg: String, isSuccess: Boolean) {
         val db = writableDatabase
         val values = ContentValues().apply {
             put("timestamp", System.currentTimeMillis())
+            put("rule_id", ruleId)
             put("target_type", type)
             put("target_dest", dest)
             put("message", msg)
@@ -50,21 +52,30 @@ class LogDbHelper(context: Context) : SQLiteOpenHelper(context, "ForwardLogs.db"
     }
 
     // 로그 전체 삭제 (수동)
-    fun clearAllLogs() {
+    fun clearAllLogs(ruleId: String? = null) {
         val db = writableDatabase
-        db.delete("logs", null, null)
+        if (ruleId == null) {
+            db.delete("logs", null, null)
+        } else {
+            db.delete("logs", "rule_id = ?", arrayOf(ruleId))
+        }
         db.close()
     }
 
-    fun getAllLogs(): List<Map<String, Any>> {
+    fun getAllLogs(ruleId: String? = null): List<Map<String, Any>> {
         val list = mutableListOf<Map<String, Any>>()
         val db = readableDatabase
-        val cursor = db.query("logs", null, null, null, null, null, "timestamp DESC")
+        
+        val selection = if (ruleId != null) "rule_id = ?" else null
+        val selectionArgs = if (ruleId != null) arrayOf(ruleId) else null
+        
+        val cursor = db.query("logs", null, selection, selectionArgs, null, null, "timestamp DESC")
         
         while (cursor.moveToNext()) {
             val map = mutableMapOf<String, Any>()
             map["id"] = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
             map["timestamp"] = cursor.getLong(cursor.getColumnIndexOrThrow("timestamp"))
+            map["rule_id"] = cursor.getString(cursor.getColumnIndexOrThrow("rule_id")) ?: ""
             map["target_type"] = cursor.getString(cursor.getColumnIndexOrThrow("target_type"))
             map["target_dest"] = cursor.getString(cursor.getColumnIndexOrThrow("target_dest"))
             map["message"] = cursor.getString(cursor.getColumnIndexOrThrow("message"))

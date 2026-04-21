@@ -26,8 +26,10 @@ object ForwardingEngine {
         onResult: ((String) -> Unit)? = null
     ) {
         val rules = RuleManager.getRules(context)
-        val dbHelper = LogDbHelper(context)
-        dbHelper.deleteOldLogs(7)
+        // dbHelper.deleteOldLogs(7) 호출이 process 시작할 때마다 있으면 
+        // 의도치 않게 로그가 삭제될 가능성이 있으므로 주석 처리하거나 로직 확인 필요
+        // val dbHelper = LogDbHelper(context)
+        // dbHelper.deleteOldLogs(7)
 
         rules.filter { it.isEnabled }.forEach { rule ->
             if (isMatched(rule, sender, body, packageName)) {
@@ -45,7 +47,7 @@ object ForwardingEngine {
     ) {
         val dbHelper = LogDbHelper(context)
         rule.targets.forEach { target ->
-            executeTarget(context, target, sender, body, dbHelper, onResult)
+            executeTarget(context, rule.id, target, sender, body, dbHelper, onResult)
         }
     }
 
@@ -84,6 +86,7 @@ object ForwardingEngine {
 
     private fun executeTarget(
         context: Context,
+        ruleId: String,
         target: ForwardTarget,
         sender: String,
         body: String,
@@ -95,18 +98,18 @@ object ForwardingEngine {
                 when (target.type) {
                     TargetType.SLACK -> {
                         val result = sendToSlack(target.destination, sender, body)
-                        dbHelper.addLog("SLACK", target.destination, body, result.first)
+                        dbHelper.addLog(ruleId, "SLACK", target.destination, body, result.first)
                         onResult?.invoke("💬 [SLACK] ${if(result.first) "✅" else "❌"} ${result.second}")
                     }
                     TargetType.API -> {
                         val result = sendToApi(target, sender, body)
-                        dbHelper.addLog("API", target.destination, body, result.first)
+                        dbHelper.addLog(ruleId, "API", target.destination, body, result.first)
                         onResult?.invoke("🔌 [API] ${if(result.first) "✅" else "❌"} ${result.second}")
                     }
                     TargetType.SMS -> {
                         Log.d("ForwardingEngine", "Sending SMS to: ${target.destination}")
                         val success = sendSms(context, target.destination, "[$sender]\n$body")
-                        dbHelper.addLog("SMS", target.destination, body, success)
+                        dbHelper.addLog(ruleId, "SMS", target.destination, body, success)
                         onResult?.invoke("📱 [SMS] to ${target.destination}: ${if(success) "✅" else "❌"}")
                     }
                 }

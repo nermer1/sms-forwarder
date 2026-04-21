@@ -13,6 +13,7 @@ class SmsReceiver: BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
+            val pendingResult = goAsync() // 비동기 작업 시작 알림
             val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
             if (messages != null && messages.isNotEmpty()) {
                 val sender = messages[0].originatingAddress ?: "Unknown"
@@ -20,7 +21,17 @@ class SmsReceiver: BroadcastReceiver() {
                 messages.forEach { sms ->
                     fullBody.append(sms.messageBody ?: "")
                 }
-                ForwardingEngine.process(context, sender, fullBody.toString())
+                
+                // 별도 스레드에서 처리 후 finish() 호출
+                Thread {
+                    try {
+                        ForwardingEngine.process(context, sender, fullBody.toString())
+                    } finally {
+                        pendingResult.finish()
+                    }
+                }.start()
+            } else {
+                pendingResult.finish()
             }
         }
     }
