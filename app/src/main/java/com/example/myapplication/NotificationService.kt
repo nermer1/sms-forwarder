@@ -8,6 +8,13 @@ import android.util.Log
 class NotificationService : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
+
+        val isGroupSummary = (sbn.notification.flags and android.app.Notification.FLAG_GROUP_SUMMARY) != 0
+        if (isGroupSummary) {
+            Log.d("NotificationService", "요약 알림 무시 (패스): ${sbn.packageName}")
+            return
+        }
+
         val packageName = sbn.packageName
         val extras = sbn.notification.extras
         val title = extras.getString("android.title") ?: ""

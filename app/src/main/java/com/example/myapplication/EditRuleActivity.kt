@@ -70,25 +70,16 @@ class EditRuleActivity : AppCompatActivity() {
             }
         }
 
-        findViewById<MaterialButton>(R.id.btnAddWebhook).text = "+ 슬랙 추가"
         findViewById<MaterialButton>(R.id.btnAddWebhook).setOnClickListener {
             addTargetView(ForwardTarget(type = TargetType.SLACK))
         }
 
-        findViewById<MaterialButton>(R.id.btnAddSms).setOnClickListener {
-            addTargetView(ForwardTarget(type = TargetType.SMS))
+        findViewById<MaterialButton>(R.id.btnAddApi).setOnClickListener {
+            addTargetView(ForwardTarget(type = TargetType.API))
         }
 
-        // API 추가 버튼은 레이아웃에 새로 정의하거나 기존꺼 활용 (여기선 새로 정의한 버튼 아이디로 가정)
-        // 일단 버튼 텍스트만 바꿔서 테스트
-        val btnAddApi = MaterialButton(this).apply { 
-            text = "+ API 추가"
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        }
-        (findViewById<View>(R.id.btnAddWebhook).parent as LinearLayout).addView(btnAddApi, 1)
-        
-        btnAddApi.setOnClickListener {
-            addTargetView(ForwardTarget(type = TargetType.API))
+        findViewById<MaterialButton>(R.id.btnAddSms).setOnClickListener {
+            addTargetView(ForwardTarget(type = TargetType.SMS))
         }
 
         findViewById<MaterialButton>(R.id.btnSaveRule).setOnClickListener { saveRule() }

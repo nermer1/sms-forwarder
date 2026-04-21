@@ -4,9 +4,9 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginVertical="4dp"
-    app:cardBackgroundColor="#F0F4FF"
+    app:cardBackgroundColor="#F5F5F5"
     app:cardCornerRadius="8dp"
-    app:strokeColor="#BDCFFF"
+    app:strokeColor="#E0E0E0"
     app:strokeWidth="1dp">
 
     <LinearLayout
@@ -25,9 +25,9 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="🌐 웹훅 타겟"
+                android:text="슬랙(웹훅) 타겟"
                 android:textStyle="bold"
-                android:textColor="#3F51B5"/>
+                android:textColor="#333333"/>
 
             <ImageButton
                 android:id="@+id/btnRemoveTarget"

@@ -40,7 +40,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="📥 메시지 수신 조건 (Triggers)"
+                android:text="메시지 수신 조건 (Triggers)"
                 android:textStyle="bold" />
 
             <RadioGroup
@@ -125,7 +125,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="📤 전달 대상 (N개 가능)"
+                android:text="전달 대상 (N개 가능)"
                 android:textStyle="bold" />
 
             <!-- 타겟들이 동적으로 추가될 컨테이너 -->
@@ -149,7 +149,16 @@
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="4dp"
                     android:layout_weight="1"
-                    android:text="+ 웹훅 추가" />
+                    android:text="+ 슬랙 추가" />
+
+                <Button
+                    android:id="@+id/btnAddApi"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="4dp"
+                    android:layout_weight="1"
+                    android:text="+ API 추가" />
 
                 <Button
                     android:id="@+id/btnAddSms"
